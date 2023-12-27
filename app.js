@@ -10,7 +10,7 @@ app.use(cors());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 
-//mongoDB conection and routes
+
 const api=require('./routes/api');
 app.use('/api',api);
 
