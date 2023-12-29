@@ -219,7 +219,6 @@ router.get('/statusLog',(req,res)=>{
 });
 
 
-
 //feed algo
 router.get('/feed/:userId', (req, res) => {
   const userId = req.params.userId;
@@ -235,7 +234,9 @@ router.get('/feed/:userId', (req, res) => {
     WHERE v.post_id IS NULL
     AND cm.post_id IS NULL
     AND cl.community_id IS NOT NULL
-    ORDER BY RAND()
+    ORDER BY 
+      (p.upvote - p.downvote) DESC, -- Rank by upvotes minus downvotes
+      p.clicks DESC -- Then rank by clicks
     LIMIT 20
     `,
     [userId, userId, userId],
@@ -246,25 +247,38 @@ router.get('/feed/:userId', (req, res) => {
         return;
       }
 
-      res.json({ feed: results });
+      // Shuffle the results
+      const shuffledResults = results.sort(() => Math.random() - 0.5);
+
+      res.json({ feed: shuffledResults });
     }
   );
 });
 
 
-//feed for not logedIns
-router.get('/feed',(req,res)=>{
-  const sql=`select * from post order by rand() limit 20`;
-  conn.query(sql,(err,result)=>{
-    if(err){
+//feed for not logged-ins
+router.get('/feed', (req, res) => {
+  const sql = `
+    SELECT p.id, p.title, p.description, p.image, p.upvote, p.downvote, p.clicks
+    FROM post p
+    ORDER BY 
+      (p.upvote - p.downvote) DESC, -- Rank by upvotes minus downvotes
+      p.clicks DESC -- Then rank by clicks
+    LIMIT 20
+  `;
+  conn.query(sql, (err, result) => {
+    if (err) {
       res.json(err);
       console.log(err);
       return;
     }
-    res.json(result);
-  })
-})
 
+    // Shuffle the results
+    const shuffledResults = result.sort(() => Math.random() - 0.5);
+
+    res.json(shuffledResults);
+  });
+});
 
 //vote 
 router.post('/vote', (req, res) => {
