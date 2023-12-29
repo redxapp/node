@@ -189,5 +189,34 @@ router.post('/comLogs', (req, res) => {
 });
 
 
+//get user is in a community
+router.get('/statusLog',(req,res)=>{
+  const {user_id,com_id}=req.body;
+  const sql = `SELECT * FROM community_logs WHERE community_id='${com_id}' AND user_id='${user_id}'`;
+  conn.query(sql,(err,result)=>{
+    if(err){
+      console.log(err);
+      res.json(err);
+      return;
+    }
+    const isThere=result.length>0;
+    if(isThere){
+      const current_status=result[0].current_status;
+      if(current_status=="joined"){
+        res.json({joined:true});
+      }
+      else if(current_status=="created"){
+        res.json({created:true});
+      }
+      else{
+        res.json({joined:false});
+      }
+    }else{
+      res.json({joined:false})
+    }
+    
+  })
+});
+
 
 module.exports=router;
