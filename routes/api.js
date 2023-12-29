@@ -219,4 +219,207 @@ router.get('/statusLog',(req,res)=>{
 });
 
 
+
+//feed algo
+router.get('/feed/:userId', (req, res) => {
+  const userId = req.params.userId;
+
+  conn.query(
+    `
+    SELECT p.id, p.title, p.description, p.image, p.upvote, p.downvote, p.clicks
+    FROM post p
+    JOIN communities c ON p.community_id = c.id
+    LEFT JOIN votes v ON p.id = v.post_id AND v.user_id = ?
+    LEFT JOIN comments cm ON p.id = cm.post_id AND cm.user_id = ?
+    LEFT JOIN community_logs cl ON c.id = cl.community_id AND cl.user_id = ? AND cl.current_status = 'joined'
+    WHERE v.post_id IS NULL
+    AND cm.post_id IS NULL
+    AND cl.community_id IS NOT NULL
+    ORDER BY RAND()
+    LIMIT 20
+    `,
+    [userId, userId, userId],
+    (err, results) => {
+      if (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Internal Server Error' });
+        return;
+      }
+
+      res.json({ feed: results });
+    }
+  );
+});
+
+
+//feed for not logedIns
+router.get('/feed',(req,res)=>{
+  const sql=`select * from post order by rand() limit 20`;
+  conn.query(sql,(err,result)=>{
+    if(err){
+      res.json(err);
+      console.log(err);
+      return;
+    }
+    res.json(result);
+  })
+})
+
+
+//vote 
+router.post('/vote', (req, res) => {
+  const { user_id, post_id, voteAction } = req.body;
+
+  if (!voteAction || (voteAction !== 'up' && voteAction !== 'down')) {
+    res.status(400).json({ error: 'Invalid vote action. Provide either "up" or "down".' });
+    return;
+  }
+
+  // Check if the user has already voted on the post
+  const checkVoteSql = `SELECT * FROM votes WHERE user_id='${user_id}' AND id='${post_id}'`;
+
+  conn.query(checkVoteSql, (err, result) => {
+    if (err) {
+      console.log(err);
+      res.json(err);
+      return;
+    }
+
+    if (result.length > 0) {
+      // User has already voted, update the vote status or remove vote
+      const currentVoteStatus = result[0].status;
+
+      if (currentVoteStatus === voteAction) {
+        // Remove the vote
+        const removeVoteSql = `DELETE FROM votes WHERE user_id='${user_id}' AND id='${post_id}'`;
+        conn.query(removeVoteSql, (removeErr, removeResult) => {
+          if (removeErr) {
+            console.log(removeErr);
+            res.json(removeErr);
+            return;
+          }
+
+          // Update post table: Subtract from upvote or downvote
+          const updatePostSql = `UPDATE post SET ${voteAction === 'up' ? 'upvote' : 'downvote'} = ${voteAction === 'up' ? 'upvote - 1' : 'downvote - 1'} WHERE id='${post_id}'`;
+          conn.query(updatePostSql, (updateErr, updateResult) => {
+            if (updateErr) {
+              console.log(updateErr);
+              res.json(updateErr);
+              return;
+            }
+
+            // Send a response indicating the vote has been removed
+            res.json({ hasVoted: true, removedVoteStatus: voteAction });
+          });
+        });
+      } else {
+        // Update the vote status
+        const updateVoteSql = `UPDATE votes SET status='${voteAction}' WHERE user_id='${user_id}' AND id='${post_id}'`;
+        conn.query(updateVoteSql, (updateErr, updateResult) => {
+          if (updateErr) {
+            console.log(updateErr);
+            res.json(updateErr);
+            return;
+          }
+
+          // Update post table: Adjust upvote or downvote based on the previous vote
+          const updatePostSql = `
+            UPDATE post 
+            SET 
+              ${currentVoteStatus === 'up' ? 'upvote' : 'downvote'} = ${currentVoteStatus === 'up' ? 'upvote - 1' : 'downvote - 1'},
+              ${voteAction === 'up' ? 'upvote' : 'downvote'} = ${voteAction === 'up' ? 'upvote + 1' : 'downvote + 1'} 
+            WHERE id='${post_id}'`;
+          conn.query(updatePostSql, (updatePostErr, updatePostResult) => {
+            if (updatePostErr) {
+              console.log(updatePostErr);
+              res.json(updatePostErr);
+              return;
+            }
+
+            // Send a response indicating the vote status has been updated
+            res.json({ hasVoted: true, newVoteStatus: voteAction });
+          });
+        });
+      }
+    } else {
+      // User has not voted, insert a new vote record
+      const insertVoteSql = `INSERT INTO votes (user_id, id, status) VALUES ('${user_id}', '${post_id}', '${voteAction}')`;
+      conn.query(insertVoteSql, (insertErr, insertResult) => {
+        if (insertErr) {
+          console.log(insertErr);
+          res.json(insertErr);
+          return;
+        }
+
+        // Update post table: Add to upvote or downvote
+        const updatePostSql = `UPDATE post SET ${voteAction === 'up' ? 'upvote' : 'downvote'} = ${voteAction === 'up' ? 'upvote + 1' : 'downvote + 1'} WHERE id='${post_id}'`;
+        conn.query(updatePostSql, (updatePostErr, updatePostResult) => {
+          if (updatePostErr) {
+            console.log(updatePostErr);
+            res.json(updatePostErr);
+            return;
+          }
+
+          // Send a response indicating the user has voted
+          res.json({ hasVoted: false, newVoteStatus: voteAction });
+        });
+      });
+    }
+  });
+});
+
+
+//increasing clicks
+router.post('/incrementClicks', (req, res) => {
+  const { post_id } = req.body;
+
+  if (!post_id) {
+    res.status(400).json({ error: 'Post ID is required.' });
+    return;
+  }
+
+  // Increment the clicks in the post table
+  const incrementClicksSql = `UPDATE post SET clicks = clicks + 1 WHERE id='${post_id}'`;
+
+  conn.query(incrementClicksSql, (err, result) => {
+    if (err) {
+      console.log(err);
+      res.json(err);
+      return;
+    }
+
+    res.json({ success: true, message: 'Clicks incremented successfully.' });
+  });
+});
+
+//get is voted by user or not
+router.post('/checkVoteStatus', (req, res) => {
+  const { user_id, post_id } = req.body;
+
+  if (!user_id || !post_id) {
+    res.status(400).json({ error: 'User ID and Post ID are required.' });
+    return;
+  }
+
+  // Check if the user has voted on the post
+  const checkVoteSql = `SELECT * FROM votes WHERE user_id='${user_id}' AND id='${post_id}'`;
+
+  conn.query(checkVoteSql, (err, result) => {
+    if (err) {
+      console.log(err);
+      res.json(err);
+      return;
+    }
+
+    if (result.length > 0) {
+      const voteStatus = result[0].status;
+      res.json({ hasVoted: true, voteStatus });
+    } else {
+      res.json({ hasVoted: false });
+    }
+  });
+});
+
+
+
 module.exports=router;
