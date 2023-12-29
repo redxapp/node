@@ -126,5 +126,29 @@ router.get('/getPost',(req,res)=>{
 });
 
 
+//login route
+router.post('/login',(req,res)=>{
+  const {email}=req.body;
+  //query to check if the given email is already exsit 
+  let sql=`SELECT * FROM users WHERE email='${email}' `;
+  conn.query(sql,(err,result)=>{
+    if(err)
+    console.log(err);
+  const emailexsist=result.length>0;
+  if(emailexsist==true){
+    res.json({existinguser:true});
+  }
+  else{
+  //inserting the new email into database
+    let insertquery=`INSERT INTO users (email,username) VALUES ('${email}',"")`;
+    conn.query(insertquery,(err,result)=>{
+      if(err)
+      console.log(err)
+    console.log('email added to database'+result);
+    res.json({added:true});
+    })
+  }
+  })
+})
 
 module.exports=router;
