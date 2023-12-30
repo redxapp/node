@@ -164,39 +164,49 @@ router.post('/login',(req,res)=>{
 router.post('/comLogs', (req, res) => {
   const { user_id, com_id } = req.body;
   const sql = `SELECT * FROM community_logs WHERE community_id='${com_id}' AND user_id='${user_id}'`;
+
   conn.query(sql, (err, result) => {
     if (err) {
       console.log(err);
       res.json(err);
       return;
+    }
+
+    const exists = result.length > 0;
+
+    if (exists) {
+      // User exists, toggle the status
+      const currentStatus = result[0].current_status;
+      const newStatus = currentStatus === 'joined' ? 'left' : 'joined';
+
+      // Update the status in the database
+      const updateSql = `UPDATE community_logs SET current_status='${newStatus}' WHERE community_id='${com_id}' AND user_id='${user_id}'`;
+      conn.query(updateSql, (updateErr, updateResult) => {
+        if (updateErr) {
+          console.log(updateErr);
+          res.json(updateErr);
+          return;
+        }
+
+        // Send a response indicating the updated status
+        res.json({ exists, newStatus });
+      });
     } else {
-      const exists = result.length > 0;
-      if (exists) {
-        const currentStatus = result[0].current_status;
+      // User not found, insert a new record
+      const insertSql = `INSERT INTO community_logs (user_id, community_id, current_status) VALUES ('${user_id}', '${com_id}', 'joined')`;
+      conn.query(insertSql, (insertErr, insertResult) => {
+        if (insertErr) {
+          console.log(insertErr);
+          res.json(insertErr);
+          return;
+        }
 
-        // Toggle the status
-        const newStatus = currentStatus === 'joined' ? 'left' : 'joined';
-
-        // Update the status in the database
-        const updateSql = `UPDATE community_logs SET current_status='${newStatus}' WHERE community_id='${com_id}' AND user_id='${user_id}'`;
-        conn.query(updateSql, (updateErr, updateResult) => {
-          if (updateErr) {
-            console.log(updateErr);
-            res.json(updateErr);
-            return;
-          }
-
-          // Send a response indicating the updated status
-          res.json({ exists, newStatus });
-        });
-      } else {
-        // Handle the case where the user is not found in the community_logs
-        res.json({ exists: false, message: 'User not found in community logs.' });
-      }
+        // Send a response indicating the user has been joined
+        res.json({ exists: false, newStatus: 'joined' });
+      });
     }
   });
 });
-
 
 //get user is in a community
 router.get('/statusLog',(req,res)=>{
