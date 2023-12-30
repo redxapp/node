@@ -21,6 +21,15 @@ router.get('/users', (req, res) => {
     });
   });
 
+//get community
+ router.get('/community/:id', (req, res) => {
+     const id=req.params.id;
+    conn.query(`SELECT * FROM communities where id='${id}'`, (err, results) => {
+      if (err) throw err;
+      res.json(results);
+    });
+  });
+
 //get all posts
   router.get('/posts',(req,res)=>{
     conn.query(`SELECT * FROM post `, (err, results) => {
