@@ -57,7 +57,7 @@ router.get('/users', (req, res) => {
           }
           console.log("created");
           // Send a success response
-          res.send({success:true});
+          res.send({success:true,id:result.insertId})
         });
     })
     
