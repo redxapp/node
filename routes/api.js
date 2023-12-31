@@ -21,15 +21,6 @@ router.get('/users', (req, res) => {
     });
   });
 
-//get community
- router.get('/community/:id', (req, res) => {
-     const id=req.params.id;
-    conn.query(`SELECT * FROM communities where id='${id}'`, (err, results) => {
-      if (err) throw err;
-      res.json(results);
-    });
-  });
-
 //get all posts
   router.get('/posts',(req,res)=>{
     conn.query(`SELECT * FROM post `, (err, results) => {
@@ -66,7 +57,7 @@ router.get('/users', (req, res) => {
           }
           console.log("created");
           // Send a success response
-          res.send({success:true,id:result.insertId})
+          res.send({success:true});
         });
     })
     
@@ -135,24 +126,32 @@ router.get('/getPost',(req,res)=>{
 });
 
 
+
 //login route
 router.post('/login',(req,res)=>{
   const {email}=req.body;
   //query to check if the given email is already exsit 
   let sql=`SELECT * FROM users WHERE email='${email}' `;
   conn.query(sql,(err,result)=>{
-    if(err)
+    if(err){
     console.log(err);
+    res.json(err);
+    return;
+    }
   const emailexsist=result.length>0;
   if(emailexsist==true){
     res.json({existinguser:true});
+    return;
   }
   else{
   //inserting the new email into database
     let insertquery=`INSERT INTO users (email,username) VALUES ('${email}',"")`;
     conn.query(insertquery,(err,result)=>{
-      if(err)
+      if(err){
       console.log(err)
+      res.json(err)
+      return;
+      }
     console.log('email added to database'+result);
     res.json({added:true});
     })
@@ -160,11 +159,30 @@ router.post('/login',(req,res)=>{
   })
 })
 
+
+//get community
+router.get('/community/:id', (req, res) => {
+  const id=req.params.id;
+ conn.query(`SELECT * FROM communities where id='${id}'`, (err, results) => {
+   if (err) throw err;
+   res.json(results);
+ });
+});
+
+//get community logs
+router.get('/communityLogs', (req, res) => {
+  conn.query('SELECT * FROM community_logs', (err, results) => {
+    if (err) throw err;
+    res.json(results);
+  });
+});
+
+
 //joining and leaving community
 router.post('/comLogs', (req, res) => {
   const { user_id, com_id } = req.body;
   const sql = `SELECT * FROM community_logs WHERE community_id='${com_id}' AND user_id='${user_id}'`;
-
+  console.log("here");
   conn.query(sql, (err, result) => {
     if (err) {
       console.log(err);
@@ -210,7 +228,7 @@ router.post('/comLogs', (req, res) => {
 
 //get user is in a community
 router.get('/statusLog',(req,res)=>{
-  const {user_id,com_id}=req.body;
+  const {user_id,com_id}=req.query;
   const sql = `SELECT * FROM community_logs WHERE community_id='${com_id}' AND user_id='${user_id}'`;
   conn.query(sql,(err,result)=>{
     if(err){
@@ -219,16 +237,16 @@ router.get('/statusLog',(req,res)=>{
       return;
     }
     const isThere=result.length>0;
-    if(isThere){
+    if(result.length>0){
       const current_status=result[0].current_status;
       if(current_status=="joined"){
         res.json({joined:true});
       }
-      else if(current_status=="created"){
-        res.json({created:true});
+      else if(current_status=="left"){
+        res.json({joined:false});
       }
       else{
-        res.json({joined:false});
+        res.json({});
       }
     }else{
       res.json({joined:false})
@@ -236,7 +254,6 @@ router.get('/statusLog',(req,res)=>{
     
   })
 });
-
 
 //feed algo
 router.get('/feed/:userId', (req, res) => {
@@ -298,6 +315,7 @@ router.get('/feed', (req, res) => {
     res.json(shuffledResults);
   });
 });
+
 
 //vote 
 router.post('/vote', (req, res) => {
