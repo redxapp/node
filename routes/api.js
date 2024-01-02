@@ -15,8 +15,9 @@ router.get('/users', (req, res) => {
 
 //get all communities
   router.get('/communities', (req, res) => {
-    conn.query('SELECT * FROM communities', (err, results) => {
+    conn.query('SELECT * FROM communities order by rand()', (err, results) => {
       if (err) throw err;
+      console.log(results);
       res.json(results);
     });
   });
@@ -57,21 +58,70 @@ router.get('/users', (req, res) => {
           }
           console.log("created");
           // Send a success response
-          res.send({success:true});
+          console.log(com_id);
+          res.send({insertId:com_id});
         });
     })
     
   });
 
-//joined comminities of users
-  router.get('/joinedCommunities',(req,res)=>{
-    const email=req.query.email;
-    conn.query(`SELECT * FROM community_logs where user_id='${email}'`, (err, results) => {
+
+  router.get('/getPostDetailsWithUserAndCommunity', (req, res) => {
+    const postId = req.query.post_id;
+    const userId = req.query.user_id;
+  
+    conn.query(`
+      SELECT 
+        p.title, 
+        p.description, 
+        p.image, 
+        p.upvote, 
+        p.downvote, 
+        u.username AS user_name,
+        u.email AS user_email,
+        c.dp AS community_dp,
+        c.community AS community_name,
+        COALESCE(v.status, 'Not Voted') AS vote_status
+      FROM post p
+      INNER JOIN users u ON p.user_id = u.email
+      INNER JOIN communities c ON p.community_id = c.id
+      LEFT JOIN votes v ON p.id = v.post_id AND v.user_id = '${userId}'
+      WHERE p.id = '${postId}'
+    `, (err, results) => {
       if (err) throw err;
+  
       res.json(results);
     });
   });
 
+
+//joined communities
+  router.get('/joinedCommunities', (req, res) => {
+    const email = req.query.email;
+  
+    // Use a JOIN query to fetch community details based on user's email
+    conn.query(`
+      SELECT c.*
+      FROM communities c
+      JOIN community_logs cl ON c.id = cl.community_id
+      WHERE cl.user_id = '${email}' AND (cl.current_status='joined' OR cl.current_status='created')
+    `,
+ (err, results) => {
+      if (err) {
+        // Handle the error appropriately (e.g., send an error response)
+        console.error(err);
+        res.status(500).json({ error: 'Internal Server Error' });
+        return;
+      }
+  
+      // Log the results for debugging (you can remove this in a production environment)
+      //console.log(results);
+  
+      // Send the community details as a JSON response
+      res.json(results);
+    });
+  });
+  
 //get all posts of a community
   router.get('/communityPosts',(req,res)=>{
     const com=req.query.com;
@@ -174,6 +224,15 @@ router.get('/communityLogs', (req, res) => {
   conn.query('SELECT * FROM community_logs', (err, results) => {
     if (err) throw err;
     res.json(results);
+  });
+});
+
+//get members count
+router.get('/membersCount', (req, res) => {
+  const com_id=req.query.com_id;
+  conn.query(`SELECT * FROM community_logs where community_id='${com_id}' and current_status='joined'`, (err, results) => {
+    if (err) throw err;
+    res.json({count:results.length});
   });
 });
 
