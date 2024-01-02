@@ -375,7 +375,6 @@ router.get('/feed', (req, res) => {
   });
 });
 
-
 //vote 
 router.post('/vote', (req, res) => {
   const { user_id, post_id, voteAction } = req.body;
@@ -386,9 +385,9 @@ router.post('/vote', (req, res) => {
   }
 
   // Check if the user has already voted on the post
-  const checkVoteSql = `SELECT * FROM votes WHERE user_id='${user_id}' AND id='${post_id}'`;
+  const checkVoteSql = 'SELECT * FROM votes WHERE user_id=? AND post_id=?';
 
-  conn.query(checkVoteSql, (err, result) => {
+  conn.query(checkVoteSql, [user_id, post_id], (err, result) => {
     if (err) {
       console.log(err);
       res.json(err);
@@ -401,8 +400,8 @@ router.post('/vote', (req, res) => {
 
       if (currentVoteStatus === voteAction) {
         // Remove the vote
-        const removeVoteSql = `DELETE FROM votes WHERE user_id='${user_id}' AND id='${post_id}'`;
-        conn.query(removeVoteSql, (removeErr, removeResult) => {
+        const removeVoteSql = 'DELETE FROM votes WHERE user_id=? AND post_id=?';
+        conn.query(removeVoteSql, [user_id, post_id], (removeErr, removeResult) => {
           if (removeErr) {
             console.log(removeErr);
             res.json(removeErr);
@@ -410,7 +409,7 @@ router.post('/vote', (req, res) => {
           }
 
           // Update post table: Subtract from upvote or downvote
-          const updatePostSql = `UPDATE post SET ${voteAction === 'up' ? 'upvote' : 'downvote'} = ${voteAction === 'up' ? 'upvote - 1' : 'downvote - 1'} WHERE id='${post_id}'`;
+          const updatePostSql = `UPDATE post SET ${voteAction === 'up' ? 'upvote' : 'downvote'} = ${voteAction === 'up' ? 'upvote - 1' : 'downvote - 1'} WHERE post_id='${post_id}'`;
           conn.query(updatePostSql, (updateErr, updateResult) => {
             if (updateErr) {
               console.log(updateErr);
@@ -424,8 +423,8 @@ router.post('/vote', (req, res) => {
         });
       } else {
         // Update the vote status
-        const updateVoteSql = `UPDATE votes SET status='${voteAction}' WHERE user_id='${user_id}' AND id='${post_id}'`;
-        conn.query(updateVoteSql, (updateErr, updateResult) => {
+        const updateVoteSql = 'UPDATE votes SET status=? WHERE user_id=? AND post_id=?';
+        conn.query(updateVoteSql, [voteAction, user_id, post_id], (updateErr, updateResult) => {
           if (updateErr) {
             console.log(updateErr);
             res.json(updateErr);
@@ -438,7 +437,7 @@ router.post('/vote', (req, res) => {
             SET 
               ${currentVoteStatus === 'up' ? 'upvote' : 'downvote'} = ${currentVoteStatus === 'up' ? 'upvote - 1' : 'downvote - 1'},
               ${voteAction === 'up' ? 'upvote' : 'downvote'} = ${voteAction === 'up' ? 'upvote + 1' : 'downvote + 1'} 
-            WHERE id='${post_id}'`;
+            WHERE post_id='${post_id}'`;
           conn.query(updatePostSql, (updatePostErr, updatePostResult) => {
             if (updatePostErr) {
               console.log(updatePostErr);
@@ -453,8 +452,8 @@ router.post('/vote', (req, res) => {
       }
     } else {
       // User has not voted, insert a new vote record
-      const insertVoteSql = `INSERT INTO votes (user_id, id, status) VALUES ('${user_id}', '${post_id}', '${voteAction}')`;
-      conn.query(insertVoteSql, (insertErr, insertResult) => {
+      const insertVoteSql = 'INSERT INTO votes (user_id, post_id, status) VALUES (?, ?, ?)';
+      conn.query(insertVoteSql, [user_id, post_id, voteAction], (insertErr, insertResult) => {
         if (insertErr) {
           console.log(insertErr);
           res.json(insertErr);
@@ -462,7 +461,7 @@ router.post('/vote', (req, res) => {
         }
 
         // Update post table: Add to upvote or downvote
-        const updatePostSql = `UPDATE post SET ${voteAction === 'up' ? 'upvote' : 'downvote'} = ${voteAction === 'up' ? 'upvote + 1' : 'downvote + 1'} WHERE id='${post_id}'`;
+        const updatePostSql = `UPDATE post SET ${voteAction === 'up' ? 'upvote' : 'downvote'} = ${voteAction === 'up' ? 'upvote + 1' : 'downvote + 1'} WHERE post_id='${post_id}'`;
         conn.query(updatePostSql, (updatePostErr, updatePostResult) => {
           if (updatePostErr) {
             console.log(updatePostErr);
