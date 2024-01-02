@@ -374,6 +374,8 @@ router.get('/feed', (req, res) => {
     res.json(shuffledResults);
   });
 });
+
+
 //vote 
 router.post('/vote', (req, res) => {
   const { user_id, post_id, voteAction } = req.body;
@@ -407,8 +409,8 @@ router.post('/vote', (req, res) => {
             return;
           }
 
-          // Update posts table: Subtract from upvote or downvote
-          const updatePostSql = `UPDATE posts SET ${voteAction === 'up' ? 'upvote' : 'downvote'} = ${voteAction === 'up' ? 'upvote - 1' : 'downvote - 1'} WHERE id='${post_id}'`;
+          // Update post table: Subtract from upvote or downvote
+          const updatePostSql = `UPDATE post SET ${voteAction === 'up' ? 'upvote' : 'downvote'} = ${voteAction === 'up' ? 'upvote - 1' : 'downvote - 1'} WHERE id='${post_id}'`;
           conn.query(updatePostSql, (updateErr, updateResult) => {
             if (updateErr) {
               console.log(updateErr);
@@ -430,9 +432,9 @@ router.post('/vote', (req, res) => {
             return;
           }
 
-          // Update posts table: Adjust upvote or downvote based on the previous vote
+          // Update post table: Adjust upvote or downvote based on the previous vote
           const updatePostSql = `
-            UPDATE posts 
+            UPDATE post 
             SET 
               ${currentVoteStatus === 'up' ? 'upvote' : 'downvote'} = ${currentVoteStatus === 'up' ? 'upvote - 1' : 'downvote - 1'},
               ${voteAction === 'up' ? 'upvote' : 'downvote'} = ${voteAction === 'up' ? 'upvote + 1' : 'downvote + 1'} 
@@ -459,8 +461,8 @@ router.post('/vote', (req, res) => {
           return;
         }
 
-        // Update posts table: Add to upvote or downvote
-        const updatePostSql = `UPDATE posts SET ${voteAction === 'up' ? 'upvote' : 'downvote'} = ${voteAction === 'up' ? 'upvote + 1' : 'downvote + 1'} WHERE id='${post_id}'`;
+        // Update post table: Add to upvote or downvote
+        const updatePostSql = `UPDATE post SET ${voteAction === 'up' ? 'upvote' : 'downvote'} = ${voteAction === 'up' ? 'upvote + 1' : 'downvote + 1'} WHERE id='${post_id}'`;
         conn.query(updatePostSql, (updatePostErr, updatePostResult) => {
           if (updatePostErr) {
             console.log(updatePostErr);
