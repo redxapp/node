@@ -186,39 +186,48 @@ router.get('/getPost',(req,res)=>{
 });
 
 
-
 //login route
-router.post('/login',(req,res)=>{
-  const {email}=req.body;
-  //query to check if the given email is already exsit 
-  let sql=`SELECT * FROM users WHERE email='${email}' `;
-  conn.query(sql,(err,result)=>{
-    if(err){
-    console.log(err);
-    res.json(err);
-    return;
-    }
-  const emailexsist=result.length>0;
-  if(emailexsist==true){
-    res.json({existinguser:true});
-    return;
-  }
-  else{
-    const dusername="RedX User"+result.length+1;
-  //inserting the new email into database
-    let insertquery=`INSERT INTO users (email,username) VALUES ('${email}',"${dusername}")`;
-    conn.query(insertquery,(err,result)=>{
-      if(err){
-      console.log(err)
-      res.json(err)
+router.post('/login', (req, res) => {
+  const { email } = req.body;
+
+  // Query to check if the given email already exists
+  let sql = `SELECT * FROM users WHERE email='${email}'`;
+
+  conn.query(sql, (err, result) => {
+    if (err) {
+      console.log(err);
+      res.json(err);
       return;
-      }
-    console.log('email added to database'+result);
-    res.json({added:true});
-    })
-  }
-  })
-})
+    }
+
+    const emailExist = result.length > 0;
+
+    if (emailExist) {
+      res.json({ existingUser: true });
+      return;
+    } else {
+      // Generate a random 4-digit number
+      const randomDigits = Math.floor(1000 + Math.random() * 9000);
+
+      // Create the dynamic username
+      const dynamicUsername = `RedX User ${randomDigits}`;
+
+      // Inserting the new email into the database
+      let insertQuery = `INSERT INTO users (email, username) VALUES ('${email}', '${dynamicUsername}')`;
+
+      conn.query(insertQuery, (err, result) => {
+        if (err) {
+          console.log(err);
+          res.json(err);
+          return;
+        }
+
+        console.log('Email added to database ' + result);
+        res.json({ added: true });
+      });
+    }
+  });
+});
 
 
 //get community
