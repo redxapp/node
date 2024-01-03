@@ -6,7 +6,7 @@ const conn = require('../db_con');
 
 
 //get all users
-router.get('/users', (req, res) => {
+router.get('/allUsers', (req, res) => {
     conn.query('SELECT * FROM users', (err, results) => {
       if (err) throw err;
       res.json(results);
@@ -21,6 +21,16 @@ router.get('/users', (req, res) => {
       res.json(results);
     });
   });
+
+  //get vote logs
+  router.get('/voteLogs', (req, res) => {
+    conn.query('SELECT * FROM votes', (err, results) => {
+      if (err) throw err;
+      console.log(results);
+      res.json(results);
+    });
+  });
+
 
 //get all posts
   router.get('/posts',(req,res)=>{
@@ -194,8 +204,9 @@ router.post('/login',(req,res)=>{
     return;
   }
   else{
+    const dusername="RedX User"+result.length+1;
   //inserting the new email into database
-    let insertquery=`INSERT INTO users (email,username) VALUES ('${email}',"")`;
+    let insertquery=`INSERT INTO users (email,username) VALUES ('${email}',"${dusername}")`;
     conn.query(insertquery,(err,result)=>{
       if(err){
       console.log(err)
@@ -479,6 +490,7 @@ router.post('/vote', (req, res) => {
 });
 
 
+
 //increasing clicks
 router.post('/incrementClicks', (req, res) => {
   const { post_id } = req.body;
@@ -531,5 +543,44 @@ router.post('/checkVoteStatus', (req, res) => {
 });
 
 
+// Update username by email
+router.put('/users', (req, res) => {
+  const { email, newUsername } = req.body;
+  const query = `UPDATE users SET username = ? WHERE email = ?`;
+
+  conn.query(query, [newUsername, email], (err, results) => {
+    if (err) {
+      console.error('Error updating username:', err);
+      res.status(500).json({ error: 'Internal Server Error' });
+      return;
+    }
+
+    if (results.affectedRows > 0) {
+      res.json({ success: true, message: 'Username updated successfully' });
+    } else {
+      res.status(404).json({ error: 'User not found' });
+    }
+  });
+});
+
+// Get user details by email
+router.get('/users', (req, res) => {
+  const { email } = req.query;
+  const query = `SELECT * FROM users WHERE email = ?`;
+
+  conn.query(query, [email], (err, results) => {
+    if (err) {
+      console.error('Error fetching user data:', err);
+      res.status(500).json({ error: 'Internal Server Error' });
+      return;
+    }
+
+    if (results.length > 0) {
+      res.json(results[0]);
+    } else {
+      res.status(404).json({ error: 'User not found' });
+    }
+  });
+});
 
 module.exports=router;
