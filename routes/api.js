@@ -3,6 +3,41 @@ const router=express.Router();
 
 
 const conn = require('../db_con');
+router.post('/comments', (req, res) => {
+  const { post_id, comment, user_id } = req.body;
+  const sql = 'INSERT INTO comments(post_id, comment, user_id) VALUES (?, ?, ?)';
+  conn.query(sql, [post_id, comment, user_id], (err, result) => {
+    if (err) {
+      console.error('Error executing query:', err);
+      res.status(500).send('Internal Server Error');
+      return;
+    }
+  
+    res.status(201).send({ success: true });
+  });
+});
+//get comments by postid
+router.post('/getComment',(req,res)=>{
+  const {post_id}=req.body;
+  const sql=`SELECT * FROM comments WHERE post_id=${post_id}`;
+  conn.query(sql,(err,result)=>{
+    if(err){
+      console.error('error query',err);
+      res.status(500).send('internel sderver error');
+    }
+    res.json(result);
+    
+  })
+
+})
+//feed_logs
+router.get('/feedLogs', (req, res) => {
+  conn.query('SELECT * FROM feed_logs', (err, results) => {
+    if (err) throw err;
+    res.json(results);
+  });
+});
+
 
 
 //get all users
@@ -84,7 +119,9 @@ router.get('/allUsers', (req, res) => {
       SELECT 
         p.title, 
         p.description, 
+        p.id,
         p.image, 
+        p.community_id,
         p.upvote, 
         p.downvote, 
         u.username AS user_name,
@@ -135,7 +172,7 @@ router.get('/allUsers', (req, res) => {
 //get all posts of a community
   router.get('/communityPosts',(req,res)=>{
     const com=req.query.com;
-    conn.query(`SELECT * FROM post where community_id='${com}'`, (err, results) => {
+    conn.query(`SELECT * FROM post where community_id='${com}'  order by id desc`, (err, results) => {
       if (err) throw err;
       res.json(results);
     });
@@ -334,6 +371,7 @@ router.get('/statusLog',(req,res)=>{
   })
 });
 
+
 //feed algo
 router.get('/feed/:userId', (req, res) => {
   const userId = req.params.userId;
@@ -365,10 +403,12 @@ router.get('/feed/:userId', (req, res) => {
       // Shuffle the results
       const shuffledResults = results.sort(() => Math.random() - 0.5);
 
-      res.json({ feed: shuffledResults });
+      res.json(shuffledResults );
     }
   );
 });
+
+
 
 
 //feed for not logged-ins
@@ -518,7 +558,7 @@ router.post('/incrementClicks', (req, res) => {
       res.json(err);
       return;
     }
-
+console.log("vshdvv");
     res.json({ success: true, message: 'Clicks incremented successfully.' });
   });
 });
